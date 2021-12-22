@@ -38,17 +38,16 @@ public class GameService {
     }
 
     private MoveDirection chooseFastestRouteToNearestFood(LinkedList<MoveDirection> possibleDirections, TurnData turnData) {
-        final var stepsNeededToNearestFoodAndStepDirection = calculateStepsNeededToNearestFoodAndStepDirection(possibleDirections, turnData);
-
-        final Integer stepsNeededToNearestFood = stepsNeededToNearestFoodAndStepDirection.getKey();
+        final var stepsNeededToNearestFoodAndStepDirectionOptional = calculateStepsNeededToNearestFoodAndStepDirection(possibleDirections, turnData);
 
         boolean isLateEater = false;
 
-        if(noFoodOnBoard(turnData) || (isLateEater && notHungry(turnData, stepsNeededToNearestFood))) {
+        if(stepsNeededToNearestFoodAndStepDirectionOptional.isEmpty() || noFoodOnBoard(turnData) || (isLateEater && notHungry(turnData, stepsNeededToNearestFoodAndStepDirectionOptional.get().getKey()))) {
             return getMoveDirectionThatHasPossibleNextSteps(possibleDirections, turnData, false);
         }
 
-        return stepsNeededToNearestFoodAndStepDirection
+        return stepsNeededToNearestFoodAndStepDirectionOptional
+                .get()
                 .getValue();
     }
 
@@ -88,15 +87,14 @@ public class GameService {
         return false;
     }
 
-    private AbstractMap.SimpleImmutableEntry<Integer, MoveDirection> calculateStepsNeededToNearestFoodAndStepDirection(LinkedList<MoveDirection> possibleDirections, TurnData turnData) {
+    private Optional<AbstractMap.SimpleImmutableEntry<Integer, MoveDirection>> calculateStepsNeededToNearestFoodAndStepDirection(LinkedList<MoveDirection> possibleDirections, TurnData turnData) {
         return possibleDirections.stream()
                 .map(possibleDirection ->
                         new AbstractMap.SimpleImmutableEntry<>(Coordinate.createNextPosition(turnData.you().head(), possibleDirection), possibleDirection))
                 .map(possibleCoordinateAndDirection ->
                         new AbstractMap.SimpleImmutableEntry<>(calculateMinStepsNeededToNearestFood(possibleCoordinateAndDirection.getKey(), turnData.board().food()), possibleCoordinateAndDirection.getValue()))
                 .sorted(Map.Entry.comparingByKey())
-                .findFirst()
-                .get();
+                .findFirst();
     }
 
     private int calculateMinStepsNeededToNearestFood(Coordinate currentPosition, Coordinate[] food) {
@@ -117,15 +115,19 @@ public class GameService {
     private boolean isNotCollidingSnakes(Coordinate coordinate, Battlesnake you, Battlesnake[] snakes) {
         final boolean doesNotCollideSnakeBodies = Arrays.stream(snakes)
                 .flatMap(battlesnake -> Arrays.stream(battlesnake.body()))
-                .filter(snakeCoordinate -> Arrays.stream(snakes).map(Battlesnake::head).noneMatch(headCoordinate -> headCoordinate.equals(snakeCoordinate)))
+                .filter(snakeCoordinate -> isNotHead(snakes, snakeCoordinate))
                 .noneMatch(snakeCoordinate -> snakeCoordinate.equals(coordinate));
 
         final boolean doesNotCollideHeadsOfMoreLengthySnakes = Arrays.stream(snakes)
                 .filter(snake -> snake.length() >= you.length())
                 .map(Battlesnake::head)
-                .noneMatch(snakeCoordinate -> snakeCoordinate.equals(coordinate));
+                .noneMatch(headCoordinate -> headCoordinate.equals(coordinate));
 
         return doesNotCollideSnakeBodies && doesNotCollideHeadsOfMoreLengthySnakes;
+    }
+
+    private boolean isNotHead(Battlesnake[] snakes, Coordinate snakeCoordinate) {
+        return Arrays.stream(snakes).map(Battlesnake::head).noneMatch(headCoordinate -> headCoordinate.equals(snakeCoordinate));
     }
 
     private boolean isNotOutOfMap(Coordinate coordinate, int boardHeight) {
