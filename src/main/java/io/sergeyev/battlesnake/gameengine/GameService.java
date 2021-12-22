@@ -111,11 +111,21 @@ public class GameService {
 
     private boolean validate(Coordinate coordinate, TurnData turnData) {
         return     isNotOutOfMap(coordinate, turnData.board().height()) 
-                && isNotCollidingSnakes(coordinate, turnData.board().snakes());
+                && isNotCollidingSnakes(coordinate, turnData.you(), turnData.board().snakes());
     }
 
-    private boolean isNotCollidingSnakes(Coordinate coordinate, Battlesnake[] snakes) {
-        return Arrays.stream(snakes).flatMap(battlesnake -> Arrays.stream(battlesnake.body())).noneMatch(snakeCoordinate -> snakeCoordinate.equals(coordinate));
+    private boolean isNotCollidingSnakes(Coordinate coordinate, Battlesnake you, Battlesnake[] snakes) {
+        final boolean doesNotCollideSnakeBodies = Arrays.stream(snakes)
+                .flatMap(battlesnake -> Arrays.stream(battlesnake.body()))
+                .filter(snakeCoordinate -> Arrays.stream(snakes).map(Battlesnake::head).noneMatch(headCoordinate -> headCoordinate.equals(snakeCoordinate)))
+                .noneMatch(snakeCoordinate -> snakeCoordinate.equals(coordinate));
+
+        final boolean doesNotCollideHeadsOfMoreLengthySnakes = Arrays.stream(snakes)
+                .filter(snake -> snake.length() >= you.length())
+                .map(Battlesnake::head)
+                .noneMatch(snakeCoordinate -> snakeCoordinate.equals(coordinate));
+
+        return doesNotCollideSnakeBodies && doesNotCollideHeadsOfMoreLengthySnakes;
     }
 
     private boolean isNotOutOfMap(Coordinate coordinate, int boardHeight) {
