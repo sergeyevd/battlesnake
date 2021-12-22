@@ -42,7 +42,9 @@ public class GameService {
 
         final Integer stepsNeededToNearestFood = stepsNeededToNearestFoodAndStepDirection.getKey();
 
-        if(noFoodOnBoard(turnData) || notHungry(turnData, stepsNeededToNearestFood)) {
+        boolean isLateEater = false;
+
+        if(noFoodOnBoard(turnData) || (isLateEater && notHungry(turnData, stepsNeededToNearestFood))) {
             return getMoveDirectionThatHasPossibleNextSteps(possibleDirections, turnData, false);
         }
 
